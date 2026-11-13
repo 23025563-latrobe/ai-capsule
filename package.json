@@ -4,6 +4,7 @@
   "description": "AI prompt manager with GitHub OAuth and JWT-protected CRUD.",
   "main": "index.js",
   "scripts": {
+    "test": "node --test server/*.test.js",
     "dev": "node --watch --env-file=.env server/index.js"
   },
   "repository": {
