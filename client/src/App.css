@@ -88,6 +88,7 @@
   line-height: 1.5;
 }
 .sidebar-footer {
+  margin-top: auto;
   border-top: 1px solid #3d4e65;
   color: #adbbcf;
   font-size: 0.7rem;

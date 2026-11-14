@@ -126,7 +126,7 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
                 <span className="count">{capsules.length}</span>
               </h1>
               <p className="muted">
-                Keep the prompt. Capture the insight. Build on what you learn.
+                Manage your saved prompts and response notes.
               </p>
             </div>
             <button
@@ -167,11 +167,10 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
                 <span className="empty-mark" aria-hidden="true">
                   ＋
                 </span>
-                <h3>A space for your next insight</h3>
+                <h3>No capsules yet</h3>
                 <p>
-                  Save a prompt and a short reflection.
-                  <br />
-                  Your first capsule starts a useful record of your learning.
+                  Create a capsule to save a prompt, summarise the response and
+                  record your notes.
                 </p>
                 <button onClick={() => show('create', null)}>
                   Create your first capsule
@@ -220,9 +219,6 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
               </div>
             )}
           </section>
-          <p className="workspace-footnote">
-            A good record connects what you asked with what you learned.
-          </p>
         </>
       )}
       {(view === 'create' || view === 'edit') && (

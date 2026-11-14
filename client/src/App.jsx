@@ -148,15 +148,10 @@ function App() {
         : ''
       content = (
         <section className="public-page login-page">
-          <p className="eyebrow">Your workspace, ready when you are</p>
-          <h1>
-            Make room for
-            <br />
-            better thinking.
-          </h1>
+          <h1>Your AI prompts, in one place.</h1>
           <p className="public-intro">
-            Sign in with GitHub to return to your personal collection of prompts
-            and reflections.
+            Sign in with GitHub to save prompts, review responses and keep project
+            notes.
           </p>
           {errorMessage && (
             <p className="notice error" role="alert">
@@ -209,14 +204,6 @@ function App() {
             <span aria-hidden="true">⌂</span> Overview
           </a>
         </nav>
-        <div className="sidebar-note">
-          <span className="eyebrow">A learning practice</span>
-          <p>
-            Keep the reasoning,
-            <br />
-            not just the result.
-          </p>
-        </div>
         <div className="sidebar-footer">
           AI Capsule<span>Personal learning archive</span>
         </div>

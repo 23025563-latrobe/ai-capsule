@@ -72,7 +72,7 @@ describe('capsule workspace', () => {
     )
     resolve(json({ capsules: [] }))
     expect(
-      await screen.findByText('A space for your next insight')
+      await screen.findByText('No capsules yet')
     ).toBeVisible()
     expect(
       screen.getByRole('button', { name: 'Create your first capsule' })
@@ -287,7 +287,7 @@ describe('capsule workspace', () => {
     fetch.mockResolvedValueOnce({ ok: true, status: 204, json: parseJson })
     await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
     expect(
-      await screen.findByText('A space for your next insight')
+      await screen.findByText('No capsules yet')
     ).toBeVisible()
     expect(screen.getByRole('status')).toHaveTextContent('Capsule deleted.')
     expect(fetch.mock.calls[1][1].method).toBe('DELETE')
