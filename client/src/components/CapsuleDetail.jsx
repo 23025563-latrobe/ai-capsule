@@ -46,12 +46,17 @@ export default function CapsuleDetail({ capsule, onEdit, onDelete }) {
         <div>
           <p className="eyebrow">{capsule.project_name}</p>
           <h1>{capsule.prompt_title}</h1>
-          <p className="muted">
-            Version {capsule.prompt_version} <span aria-hidden="true">·</span>{' '}
-            Created{' '}
-            <time dateTime={capsule.created_at}>
-              {formatDate(capsule.created_at, true)}
-            </time>
+          <p className="muted detail-meta">
+            <span className="metadata-badge version-badge">
+              Version {capsule.prompt_version}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>
+              Created{' '}
+              <time dateTime={capsule.created_at}>
+                {formatDate(capsule.created_at, true)}
+              </time>
+            </span>
           </p>
         </div>
         <div className="button-row">
@@ -105,11 +110,19 @@ export default function CapsuleDetail({ capsule, onEdit, onDelete }) {
             <dt>Project</dt>
             <dd>{capsule.project_name}</dd>
             <dt>Category</dt>
-            <dd>{capsule.category || 'Uncategorised'}</dd>
+            <dd>
+              <span className="metadata-badge category-badge">
+                {capsule.category || 'Uncategorised'}
+              </span>
+            </dd>
             <dt>Usefulness</dt>
             <dd>{capsule.usefulness || 'Not recorded'}</dd>
             <dt>Version</dt>
-            <dd>{capsule.prompt_version}</dd>
+            <dd>
+              <span className="metadata-badge version-badge">
+                {capsule.prompt_version}
+              </span>
+            </dd>
             <dt>Screenshot evidence</dt>
             <dd>
               {screenshot ? (

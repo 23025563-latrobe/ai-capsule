@@ -199,8 +199,12 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
                             <span aria-hidden="true">›</span>
                           </button>
                           <span className="record-sub">
-                            Version {capsule.prompt_version} ·{' '}
-                            {capsule.category || 'Uncategorised'}
+                            <span className="metadata-badge version-badge">
+                              Version {capsule.prompt_version}
+                            </span>
+                            <span className="metadata-badge category-badge">
+                              {capsule.category || 'Uncategorised'}
+                            </span>
                           </span>
                         </td>
                         <td>{capsule.project_name}</td>

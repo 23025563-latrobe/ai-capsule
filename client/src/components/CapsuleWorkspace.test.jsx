@@ -99,6 +99,20 @@ describe('capsule workspace', () => {
     )
   })
 
+  it('shows category and version values in labelled metadata badges', async () => {
+    start([example])
+    await screen.findByRole('button', { name: example.prompt_title })
+
+    expect(screen.getByText('Version 2')).toHaveClass(
+      'metadata-badge',
+      'version-badge'
+    )
+    expect(screen.getByText('Accessibility')).toHaveClass(
+      'metadata-badge',
+      'category-badge'
+    )
+  })
+
   it('shows a recoverable loading failure and retries', async () => {
     const fetch = vi
       .fn()
@@ -391,6 +405,14 @@ describe('capsule workspace', () => {
   it('provides safe links and labelled timestamp metadata in the detail view', async () => {
     const { user } = start([example])
     await openExample(user)
+    expect(screen.getByText('Version 2')).toHaveClass(
+      'metadata-badge',
+      'version-badge'
+    )
+    expect(screen.getByText('Accessibility')).toHaveClass(
+      'metadata-badge',
+      'category-badge'
+    )
     const link = screen.getByRole('link', { name: /View screenshot/ })
     expect(link).toHaveAttribute('href', example.screenshot_url)
     expect(link).toHaveAttribute('target', '_blank')
