@@ -1,0 +1,142 @@
+import { useEffect, useRef, useState } from 'react'
+import { evidenceUrl, formatDate } from '../capsule-fields'
+
+export function ReflectionStatus({ capsule }) {
+  return (
+    <div className="badges">
+      <span className={capsule.reviewed ? 'badge done' : 'badge'}>
+        {capsule.reviewed ? 'Reviewed' : 'Not reviewed'}
+      </span>
+      <span className={capsule.improved ? 'badge done' : 'badge'}>
+        {capsule.improved ? 'Improved' : 'Not improved'}
+      </span>
+    </div>
+  )
+}
+
+export default function CapsuleDetail({ capsule, onEdit, onDelete }) {
+  const [copyState, setCopyState] = useState('')
+  const feedbackTimer = useRef(null)
+  const screenshot = evidenceUrl(capsule.screenshot_url)
+
+  useEffect(
+    () => () => {
+      clearTimeout(feedbackTimer.current)
+    },
+    []
+  )
+
+  async function copyPrompt() {
+    clearTimeout(feedbackTimer.current)
+    try {
+      if (!navigator.clipboard?.writeText)
+        throw new Error('Clipboard unavailable')
+      await navigator.clipboard.writeText(capsule.prompt_text)
+      setCopyState('success')
+      feedbackTimer.current = setTimeout(() => setCopyState(''), 1800)
+    } catch {
+      setCopyState('error')
+      feedbackTimer.current = setTimeout(() => setCopyState(''), 4000)
+    }
+  }
+
+  return (
+    <>
+      <div className="detail-heading">
+        <div>
+          <p className="eyebrow">{capsule.project_name}</p>
+          <h1>{capsule.prompt_title}</h1>
+          <p className="muted detail-meta">
+            <span className="metadata-badge version-badge">
+              Version {capsule.prompt_version}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>
+              Created{' '}
+              <time dateTime={capsule.created_at}>
+                {formatDate(capsule.created_at, true)}
+              </time>
+            </span>
+          </p>
+        </div>
+        <div className="button-row">
+          <button className="secondary" onClick={onEdit}>
+            Edit capsule
+          </button>
+          <button className="danger-text" onClick={onDelete}>
+            Delete capsule
+          </button>
+        </div>
+      </div>
+      <div className="detail-grid">
+        <div className="detail-main">
+          <section className="panel reading">
+            <div className="reading-heading">
+              <h2>Prompt</h2>
+              <button className="secondary copy-prompt" onClick={copyPrompt}>
+                {copyState === 'success' ? 'Copied' : 'Copy prompt'}
+              </button>
+            </div>
+            <p
+              className={copyState === 'error' ? 'copy-error' : 'sr-only'}
+              role="status"
+              aria-label="Prompt copy status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {copyState === 'success'
+                ? 'Prompt copied to clipboard.'
+                : copyState === 'error'
+                  ? 'Could not copy. Select the prompt text and copy it manually.'
+                  : ''}
+            </p>
+            <p className="preserve prompt-copy">{capsule.prompt_text}</p>
+          </section>
+          <section className="panel reading">
+            <h2>Response summary</h2>
+            <p className="preserve">
+              {capsule.response_summary || 'No response summary recorded.'}
+            </p>
+          </section>
+          <section className="panel reading">
+            <h2>Notes</h2>
+            <p className="preserve">{capsule.notes || 'No notes recorded.'}</p>
+          </section>
+        </div>
+        <aside className="panel detail-aside">
+          <h2>At a glance</h2>
+          <ReflectionStatus capsule={capsule} />
+          <dl>
+            <dt>Project</dt>
+            <dd>{capsule.project_name}</dd>
+            <dt>Category</dt>
+            <dd>
+              <span className="metadata-badge category-badge">
+                {capsule.category || 'Uncategorised'}
+              </span>
+            </dd>
+            <dt>Usefulness</dt>
+            <dd>{capsule.usefulness || 'Not recorded'}</dd>
+            <dt>Version</dt>
+            <dd>
+              <span className="metadata-badge version-badge">
+                {capsule.prompt_version}
+              </span>
+            </dd>
+            <dt>Screenshot evidence</dt>
+            <dd>
+              {screenshot ? (
+                <a href={screenshot} target="_blank" rel="noopener noreferrer">
+                  View screenshot <span aria-hidden="true">↗</span>
+                  <span className="sr-only"> (opens in a new tab)</span>
+                </a>
+              ) : (
+                'No screenshot linked.'
+              )}
+            </dd>
+          </dl>
+        </aside>
+      </div>
+    </>
+  )
+}
