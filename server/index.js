@@ -1,15 +1,9 @@
-import express from 'express';
+import { createApp } from './app.js';
 import { openDatabase } from './database.js';
 
 const database = openDatabase();
-const app = express();
+const app = createApp();
 const port = Number(process.env.PORT || 3001);
-
-app.use(express.json());
-
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
 
 const server = app.listen(port);
 
@@ -18,7 +12,7 @@ server.once('listening', () => {
 });
 
 server.on('error', (error) => {
-  database.close();
+  if (database.isOpen) database.close();
   console.error(error);
   process.exitCode = 1;
 });
@@ -29,7 +23,7 @@ function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   server.close(() => {
-    database.close();
+    if (database.isOpen) database.close();
   });
 }
 
