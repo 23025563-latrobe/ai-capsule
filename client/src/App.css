@@ -121,6 +121,16 @@
   align-items: center;
   gap: 0.65rem;
 }
+.session-check,
+.session-check-error {
+  color: var(--muted);
+  font-size: 0.73rem;
+}
+.session-check-error {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
 .account-name {
   font-size: 0.73rem;
   color: var(--muted);

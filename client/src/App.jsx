@@ -26,20 +26,31 @@ function App() {
   })
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState('')
+  const [sessionAttempt, setSessionAttempt] = useState(0)
   const expireSession = useCallback(() => {
     setSession({ loading: false, user: null, error: '', expired: true })
   }, [])
 
+  const retrySession = useCallback(() => {
+    setSession({ loading: true, user: null, error: '', expired: false })
+    setSessionAttempt((attempt) => attempt + 1)
+  }, [])
+
   useEffect(() => {
-    if (path !== '/login' && path !== '/dashboard') return
+    if (path !== '/' && path !== '/login' && path !== '/dashboard') return
     const controller = new AbortController()
+    let timedOut = false
+    const timeout = setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, 10000)
     apiRequest('/api/auth/session', { signal: controller.signal })
       .then(({ user }) => {
         if (path === '/login') window.location.replace('/dashboard')
         setSession({ loading: false, user, error: '', expired: false })
       })
       .catch((error) => {
-        if (error.name === 'AbortError') return
+        if (error.name === 'AbortError' && !timedOut) return
         if (error.status === 401) {
           setSession({
             loading: false,
@@ -51,20 +62,27 @@ function App() {
           setSession({
             loading: false,
             user: null,
-            error: error.message,
+            error: timedOut
+              ? 'The session check timed out. Please try again.'
+              : error.message,
             expired: false
           })
       })
-    return () => controller.abort()
-  }, [path])
+      .finally(() => clearTimeout(timeout))
+    return () => {
+      clearTimeout(timeout)
+      controller.abort()
+    }
+  }, [path, sessionAttempt])
 
   async function logout() {
     setLoggingOut(true)
     setLogoutError('')
     try {
       await apiRequest('/api/auth/logout', { method: 'POST' })
-      expireSession()
-      window.location.replace('/login')
+      setSession({ loading: false, user: null, error: '', expired: false })
+      setLoggingOut(false)
+      if (path !== '/') window.location.replace('/login')
     } catch (error) {
       if (error.status === 401) expireSession()
       else setLogoutError(error.message)
@@ -123,9 +141,6 @@ function App() {
           <p className="notice error" role="alert">
             {session.error}
           </p>
-          <a className="button" href="/login">
-            Try again
-          </a>
         </section>
       )
     else if (session.expired)
@@ -225,6 +240,17 @@ function App() {
               </span>
               <button className="quiet" onClick={logout} disabled={loggingOut}>
                 {loggingOut ? 'Signing out…' : 'Sign out'}
+              </button>
+            </div>
+          ) : session.loading ? (
+            <span className="session-check" role="status">
+              Checking session…
+            </span>
+          ) : session.error ? (
+            <div className="session-check-error">
+              <span role="status">Session check unavailable.</span>
+              <button className="quiet" onClick={retrySession}>
+                Retry
               </button>
             </div>
           ) : (
