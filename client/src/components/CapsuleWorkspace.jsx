@@ -1,8 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiRequest } from '../api'
-import { categorySuggestions, formatDate } from '../capsule-fields'
+import {
+  categorySuggestions,
+  formatDate,
+  usefulnessOptions
+} from '../capsule-fields'
 import CapsuleForm from './CapsuleForm'
 import CapsuleDetail, { ReflectionStatus } from './CapsuleDetail'
+
+const searchableFields = [
+  'prompt_title',
+  'project_name',
+  'prompt_text',
+  'response_summary',
+  'category',
+  'notes'
+]
 
 export default function CapsuleWorkspace({ onSessionExpired }) {
   const [capsules, setCapsules] = useState([])
@@ -15,6 +28,10 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
   const [deleting, setDeleting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [searchText, setSearchText] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [usefulnessFilter, setUsefulnessFilter] = useState('all')
+  const [reviewFilter, setReviewFilter] = useState('all')
   const heading = useRef(null)
   const deletionPending = useRef(false)
 
@@ -39,6 +56,74 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
   useEffect(() => {
     heading.current?.focus()
   }, [view])
+
+  const categoryOptions = new Map()
+  for (const capsule of capsules) {
+    const category = capsule.category?.trim()
+    if (category) {
+      const key = category.toLowerCase()
+      if (!categoryOptions.has(key)) categoryOptions.set(key, category)
+    }
+  }
+  const categories = [...categoryOptions.entries()].sort((left, right) =>
+    left[1].localeCompare(right[1])
+  )
+  const standardUsefulness = new Set(
+    usefulnessOptions.map(({ value }) => value)
+  )
+  const legacyUsefulness = [
+    ...new Set(
+      capsules
+        .map((capsule) => capsule.usefulness ?? '')
+        .filter((value) => value && !standardUsefulness.has(value))
+    )
+  ].sort((left, right) => left.localeCompare(right))
+  const ratingOptions = [
+    ...usefulnessOptions.map(({ value, label }) => ({
+      value: `value:${value}`,
+      label
+    })),
+    ...legacyUsefulness.map((value) => ({
+      value: `value:${value}`,
+      label: value
+    }))
+  ]
+  const searchTerm = searchText.trim().toLowerCase()
+  const filteredCapsules = capsules.filter((capsule) => {
+    if (
+      searchTerm &&
+      !searchableFields.some((field) =>
+        String(capsule[field] ?? '')
+          .toLowerCase()
+          .includes(searchTerm)
+      )
+    ) {
+      return false
+    }
+    if (
+      categoryFilter !== 'all' &&
+      `category:${capsule.category?.trim().toLowerCase() ?? ''}` !==
+        categoryFilter
+    ) {
+      return false
+    }
+    if (
+      usefulnessFilter !== 'all' &&
+      `value:${capsule.usefulness ?? ''}` !== usefulnessFilter
+    ) {
+      return false
+    }
+    if (reviewFilter === 'reviewed' && !capsule.reviewed) return false
+    if (reviewFilter === 'not-reviewed' && capsule.reviewed) return false
+    return true
+  })
+
+  function clearSearchAndFilters() {
+    setSearchText('')
+    setCategoryFilter('all')
+    setUsefulnessFilter('all')
+    setReviewFilter('all')
+  }
 
   function show(nextView, capsule = selected) {
     setSelected(capsule)
@@ -123,7 +208,12 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
             <div>
               <h1>
                 Capsule workspace
-                <span className="count">{capsules.length}</span>
+                <span
+                  className="count"
+                  aria-label={`${filteredCapsules.length} matching capsules`}
+                >
+                  {filteredCapsules.length}
+                </span>
               </h1>
               <p className="muted">
                 Manage your saved prompts and response notes.
@@ -139,7 +229,13 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
           <section className="panel library" aria-label="Your capsules">
             <div className="panel-heading">
               <h2>Your capsules</h2>
-              <span className="muted small">Most recent first</span>
+              <div className="panel-summary">
+                <span className="muted small" aria-live="polite">
+                  {filteredCapsules.length}{' '}
+                  {filteredCapsules.length === 1 ? 'match' : 'matches'}
+                </span>
+                <span className="muted small">Most recent first</span>
+              </div>
             </div>
             {loading ? (
               <div className="empty" role="status">
@@ -177,50 +273,139 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
                 </button>
               </div>
             ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th scope="col">Capsule</th>
-                      <th scope="col">Project</th>
-                      <th scope="col">Review status</th>
-                      <th scope="col">Created</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {capsules.map((capsule) => (
-                      <tr key={capsule.id}>
-                        <td>
-                          <button
-                            className="record-link"
-                            onClick={() => show('detail', capsule)}
-                          >
-                            {capsule.prompt_title}
-                            <span aria-hidden="true">›</span>
-                          </button>
-                          <span className="record-sub">
-                            <span className="metadata-badge version-badge">
-                              Version {capsule.prompt_version}
-                            </span>
-                            <span className="metadata-badge category-badge">
-                              {capsule.category || 'Uncategorised'}
-                            </span>
-                          </span>
-                        </td>
-                        <td>{capsule.project_name}</td>
-                        <td data-label="Review status">
-                          <ReflectionStatus capsule={capsule} />
-                        </td>
-                        <td>
-                          <time dateTime={capsule.created_at}>
-                            {formatDate(capsule.created_at)}
-                          </time>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="capsule-controls">
+                  <div className="capsule-search">
+                    <label htmlFor="capsule-search">Search capsules</label>
+                    <div className="search-input-row">
+                      <input
+                        id="capsule-search"
+                        type="search"
+                        value={searchText}
+                        onChange={(event) => setSearchText(event.target.value)}
+                      />
+                      <button
+                        className="secondary search-clear"
+                        type="button"
+                        disabled={!searchText}
+                        onClick={() => setSearchText('')}
+                      >
+                        Clear search
+                      </button>
+                    </div>
+                  </div>
+                  <div className="filter-grid">
+                    <div className="filter-field">
+                      <label htmlFor="capsule-category-filter">Category</label>
+                      <select
+                        id="capsule-category-filter"
+                        value={categoryFilter}
+                        onChange={(event) =>
+                          setCategoryFilter(event.target.value)
+                        }
+                      >
+                        <option value="all">All categories</option>
+                        {categories.map(([value, label]) => (
+                          <option key={value} value={`category:${value}`}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="filter-field">
+                      <label htmlFor="capsule-usefulness-filter">
+                        Usefulness
+                      </label>
+                      <select
+                        id="capsule-usefulness-filter"
+                        value={usefulnessFilter}
+                        onChange={(event) =>
+                          setUsefulnessFilter(event.target.value)
+                        }
+                      >
+                        <option value="all">All ratings</option>
+                        {ratingOptions.map(({ value, label }) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="filter-field">
+                      <label htmlFor="capsule-review-filter">
+                        Review status
+                      </label>
+                      <select
+                        id="capsule-review-filter"
+                        value={reviewFilter}
+                        onChange={(event) =>
+                          setReviewFilter(event.target.value)
+                        }
+                      >
+                        <option value="all">All statuses</option>
+                        <option value="reviewed">Reviewed</option>
+                        <option value="not-reviewed">Not reviewed</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                {filteredCapsules.length ? (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th scope="col">Capsule</th>
+                          <th scope="col">Project</th>
+                          <th scope="col">Review status</th>
+                          <th scope="col">Created</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredCapsules.map((capsule) => (
+                          <tr key={capsule.id}>
+                            <td>
+                              <button
+                                className="record-link"
+                                onClick={() => show('detail', capsule)}
+                              >
+                                {capsule.prompt_title}
+                                <span aria-hidden="true">›</span>
+                              </button>
+                              <span className="record-sub">
+                                <span className="metadata-badge version-badge">
+                                  Version {capsule.prompt_version}
+                                </span>
+                                <span className="metadata-badge category-badge">
+                                  {capsule.category || 'Uncategorised'}
+                                </span>
+                              </span>
+                            </td>
+                            <td>{capsule.project_name}</td>
+                            <td data-label="Review status">
+                              <ReflectionStatus capsule={capsule} />
+                            </td>
+                            <td>
+                              <time dateTime={capsule.created_at}>
+                                {formatDate(capsule.created_at)}
+                              </time>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="empty">
+                    <h3>No capsules match your search and filters.</h3>
+                    <button
+                      className="secondary"
+                      onClick={clearSearchAndFilters}
+                    >
+                      Clear search and filters
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </section>
         </>

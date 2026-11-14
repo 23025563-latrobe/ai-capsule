@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import CapsuleWorkspace from './CapsuleWorkspace'
 import App from '../App'
@@ -24,6 +24,7 @@ const example = {
 }
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status })
+const capsuleRecord = (id, updates = {}) => ({ ...example, id, ...updates })
 
 function start(records = []) {
   const fetch = vi.fn().mockResolvedValueOnce(json({ capsules: records }))
@@ -82,7 +83,10 @@ describe('capsule workspace', () => {
     expect(
       await screen.findByRole('columnheader', { name: 'Review status' })
     ).toBeVisible()
-    expect(screen.getByText('Not reviewed').closest('td')).toHaveAttribute(
+    const reviewedBadge = screen
+      .getAllByText('Not reviewed')
+      .find((element) => element.classList.contains('badge'))
+    expect(reviewedBadge.closest('td')).toHaveAttribute(
       'data-label',
       'Review status'
     )
@@ -107,10 +111,205 @@ describe('capsule workspace', () => {
       'metadata-badge',
       'version-badge'
     )
-    expect(screen.getByText('Accessibility')).toHaveClass(
-      'metadata-badge',
-      'category-badge'
+    expect(
+      screen
+        .getAllByText('Accessibility')
+        .find((element) => element.classList.contains('category-badge'))
+    ).toHaveClass('metadata-badge', 'category-badge')
+  })
+
+  it.each([
+    ['prompt title', 'prompt_title'],
+    ['project name', 'project_name'],
+    ['prompt text', 'prompt_text'],
+    ['response summary', 'response_summary'],
+    ['category', 'category'],
+    ['notes', 'notes']
+  ])('searches %s without regard to case', async (_label, field) => {
+    const matching = capsuleRecord(11, {
+      [field]: `AURORA match ${field}`
+    })
+    const other = capsuleRecord(12, { prompt_title: 'A separate record' })
+    const { user } = start([matching, other])
+    await user.type(
+      await screen.findByRole('searchbox', { name: 'Search capsules' }),
+      'aurora MATCH'
     )
+
+    expect(
+      await screen.findByRole('button', { name: matching.prompt_title })
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: other.prompt_title })
+    ).not.toBeInTheDocument()
+  })
+
+  it('searches records safely when optional text fields are empty', async () => {
+    const record = capsuleRecord(13, {
+      prompt_title: 'A record with empty optional fields',
+      response_summary: '',
+      category: '',
+      notes: ''
+    })
+    const { user } = start([record])
+    await user.type(
+      await screen.findByRole('searchbox', { name: 'Search capsules' }),
+      'empty optional'
+    )
+
+    expect(
+      await screen.findByRole('button', { name: record.prompt_title })
+    ).toBeVisible()
+  })
+
+  it('combines search, custom category, usefulness and reviewed status', async () => {
+    const records = [
+      capsuleRecord(21, {
+        prompt_title: 'Winter survey summary',
+        category: 'Data analysis',
+        usefulness: 'Good',
+        reviewed: true,
+        improved: false
+      }),
+      capsuleRecord(22, {
+        prompt_title: 'Winter survey draft',
+        category: 'Data analysis',
+        usefulness: 'Good',
+        reviewed: false,
+        improved: true
+      }),
+      capsuleRecord(23, {
+        prompt_title: 'Winter survey revision',
+        category: 'Data analysis',
+        usefulness: 'Needs improvement',
+        reviewed: true,
+        improved: true
+      })
+    ]
+    const { user } = start(records)
+    await screen.findByRole('button', { name: records[0].prompt_title })
+    const search = screen.getByRole('searchbox', { name: 'Search capsules' })
+    await user.type(search, 'winter survey')
+    await user.selectOptions(
+      screen.getByLabelText('Category'),
+      'category:data analysis'
+    )
+    await user.selectOptions(screen.getByLabelText('Usefulness'), 'value:Good')
+    await user.selectOptions(screen.getByLabelText('Review status'), 'reviewed')
+    expect(
+      within(screen.getByLabelText('Category')).getByRole('option', {
+        name: 'Data analysis'
+      })
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByLabelText('Category')).queryByRole('option', {
+        name: 'Coding'
+      })
+    ).toBeNull()
+
+    expect(
+      screen.getByRole('button', { name: records[0].prompt_title })
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: records[1].prompt_title })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: records[2].prompt_title })
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('1 match')).toBeVisible()
+
+    await user.selectOptions(
+      screen.getByLabelText('Review status'),
+      'not-reviewed'
+    )
+    expect(
+      screen.queryByRole('button', { name: records[0].prompt_title })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: records[1].prompt_title })
+    ).toBeVisible()
+  })
+
+  it('filters not-rated records and keeps legacy usefulness options', async () => {
+    const notRated = capsuleRecord(31, {
+      prompt_title: 'Unrated response',
+      usefulness: ''
+    })
+    const legacy = capsuleRecord(32, {
+      prompt_title: 'Legacy usefulness value',
+      usefulness: 'Useful after review'
+    })
+    const { user } = start([notRated, legacy])
+    await screen.findByRole('searchbox', { name: 'Search capsules' })
+    const usefulness = screen.getByLabelText('Usefulness')
+    expect(
+      within(usefulness).getByRole('option', { name: 'Useful after review' })
+    ).toBeInTheDocument()
+    await user.selectOptions(usefulness, 'value:')
+
+    expect(
+      await screen.findByRole('button', { name: notRated.prompt_title })
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: legacy.prompt_title })
+    ).not.toBeInTheDocument()
+  })
+
+  it('clears search and filters from the no-matches state', async () => {
+    const { user } = start([
+      example,
+      capsuleRecord(42, { prompt_title: 'A second capsule' })
+    ])
+    await screen.findByRole('button', { name: example.prompt_title })
+    await user.selectOptions(
+      screen.getByLabelText('Category'),
+      'category:accessibility'
+    )
+    await user.selectOptions(
+      screen.getByLabelText('Usefulness'),
+      'value:Useful starting point'
+    )
+    await user.selectOptions(
+      screen.getByLabelText('Review status'),
+      'not-reviewed'
+    )
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Search capsules' }),
+      'nothing matches'
+    )
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'No capsules match your search and filters.'
+      })
+    ).toBeVisible()
+    await user.click(
+      screen.getByRole('button', { name: 'Clear search and filters' })
+    )
+
+    expect(
+      await screen.findByRole('button', { name: example.prompt_title })
+    ).toBeVisible()
+    expect(
+      screen.getByRole('searchbox', { name: 'Search capsules' })
+    ).toHaveValue('')
+    expect(screen.getByLabelText('Category')).toHaveValue('all')
+    expect(screen.getByLabelText('Usefulness')).toHaveValue('all')
+    expect(screen.getByLabelText('Review status')).toHaveValue('all')
+  })
+
+  it('clears only the search text with its clear button', async () => {
+    const { user } = start([example])
+    const search = await screen.findByRole('searchbox', {
+      name: 'Search capsules'
+    })
+    await user.type(search, 'catalogue')
+    await user.click(screen.getByRole('button', { name: 'Clear search' }))
+
+    expect(search).toHaveValue('')
+    expect(
+      await screen.findByRole('button', { name: example.prompt_title })
+    ).toBeVisible()
   })
 
   it('shows a recoverable loading failure and retries', async () => {
@@ -361,7 +560,9 @@ describe('capsule workspace', () => {
     fetch.mockResolvedValueOnce({ ok: true, status: 204, json: parseJson })
     await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
     expect(await screen.findByText('No capsules yet')).toBeVisible()
-    expect(screen.getByRole('status')).toHaveTextContent('Capsule deleted.')
+    expect(
+      screen.getByText('Capsule deleted.', { selector: '[role="status"]' })
+    ).toBeVisible()
     expect(fetch.mock.calls[1][1].method).toBe('DELETE')
     expect(fetch.mock.calls[1][1].body).toBeUndefined()
     expect(parseJson).not.toHaveBeenCalled()
@@ -409,10 +610,11 @@ describe('capsule workspace', () => {
       'metadata-badge',
       'version-badge'
     )
-    expect(screen.getByText('Accessibility')).toHaveClass(
-      'metadata-badge',
-      'category-badge'
-    )
+    expect(
+      screen
+        .getAllByText('Accessibility')
+        .find((element) => element.classList.contains('category-badge'))
+    ).toHaveClass('metadata-badge', 'category-badge')
     const link = screen.getByRole('link', { name: /View screenshot/ })
     expect(link).toHaveAttribute('href', example.screenshot_url)
     expect(link).toHaveAttribute('target', '_blank')
