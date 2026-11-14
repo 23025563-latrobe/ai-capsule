@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiRequest } from '../api'
-import { formatDate } from '../capsule-fields'
+import { categorySuggestions, formatDate } from '../capsule-fields'
 import CapsuleForm from './CapsuleForm'
 import CapsuleDetail, { ReflectionStatus } from './CapsuleDetail'
 
@@ -199,7 +199,7 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
                             <span aria-hidden="true">↗</span>
                           </button>
                           <span className="record-sub">
-                            v{capsule.prompt_version} ·{' '}
+                            Version {capsule.prompt_version} ·{' '}
                             {capsule.category || 'Uncategorised'}
                           </span>
                         </td>
@@ -237,6 +237,7 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
           <CapsuleForm
             key={selected?.id ?? 'new'}
             capsule={view === 'edit' ? selected : undefined}
+            categories={categorySuggestions(capsules)}
             onSave={save}
             onCancel={() => show(selected ? 'detail' : 'list')}
             onSessionExpired={onSessionExpired}

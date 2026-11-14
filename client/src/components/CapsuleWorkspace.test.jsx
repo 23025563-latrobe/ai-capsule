@@ -71,9 +71,7 @@ describe('capsule workspace', () => {
       'Loading your capsules'
     )
     resolve(json({ capsules: [] }))
-    expect(
-      await screen.findByText('No capsules yet')
-    ).toBeVisible()
+    expect(await screen.findByText('No capsules yet')).toBeVisible()
     expect(
       screen.getByRole('button', { name: 'Create your first capsule' })
     ).toBeEnabled()
@@ -95,6 +93,44 @@ describe('capsule workspace', () => {
       await screen.findByRole('button', { name: /Compare catalogue layouts/ })
     ).toBeVisible()
     expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('suggests loaded categories once, with trimming and case-insensitive deduplication', async () => {
+    const records = [
+      ' Coding ',
+      'coding',
+      '  Field Notes  ',
+      'FIELD NOTES',
+      '  '
+    ].map((category, index) => ({
+      ...example,
+      id: index + 1,
+      category
+    }))
+    const { user, fetch } = start(records)
+    await user.click(await screen.findByRole('button', { name: /New capsule/ }))
+    const input = screen.getByLabelText(/^Category/)
+    const list = document.getElementById(input.getAttribute('list'))
+    expect([...list.options].map((option) => option.value)).toEqual([
+      'Coding',
+      'Writing',
+      'Research',
+      'Study',
+      'Planning',
+      'Other',
+      'Field Notes'
+    ])
+    await fillRequired(user)
+    await user.type(input, 'Field Notes')
+    fetch.mockImplementationOnce(async (path, options) => {
+      expect(path).toBe('/api/capsules')
+      return json({ capsule: { ...example, ...JSON.parse(options.body) } }, 201)
+    })
+    await user.click(screen.getByRole('button', { name: 'Save capsule' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Draft a reading guide' })
+    ).toBeVisible()
+    expect(JSON.parse(fetch.mock.calls[1][1].body).category).toBe('Field Notes')
   })
 
   it('creates a capsule, prevents duplicate saving and displays the saved record', async () => {
@@ -119,7 +155,7 @@ describe('capsule workspace', () => {
     expect(JSON.parse(options.body)).toEqual({
       project_name: 'Fictional Coastal Library',
       prompt_title: 'Draft a reading guide',
-      prompt_version: '1',
+      prompt_version: 'v1',
       category: '',
       prompt_text: 'Suggest a reading guide for a fictional book club.',
       response_summary: '',
@@ -181,7 +217,7 @@ describe('capsule workspace', () => {
     )
     await fillRequired(user)
     await user.type(
-      screen.getByLabelText('Notes'),
+      screen.getByLabelText(/^Notes/),
       'Fictional verification note'
     )
     fetch.mockRejectedValueOnce(new TypeError('Network unavailable'))
@@ -189,7 +225,7 @@ describe('capsule workspace', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Unable to reach AI Capsule'
     )
-    expect(screen.getByLabelText('Notes')).toHaveValue(
+    expect(screen.getByLabelText(/^Notes/)).toHaveValue(
       'Fictional verification note'
     )
     expect(screen.getByRole('button', { name: 'Save capsule' })).toBeEnabled()
@@ -204,7 +240,7 @@ describe('capsule workspace', () => {
     await user.clear(screen.getByLabelText(/Prompt title/))
     await user.type(screen.getByLabelText(/Prompt title/), '   ')
     await user.type(
-      screen.getByLabelText('Screenshot evidence URL'),
+      screen.getByLabelText(/^Screenshot evidence URL/),
       'javascript:alert(1)'
     )
     await user.click(screen.getByRole('button', { name: 'Save capsule' }))
@@ -226,7 +262,7 @@ describe('capsule workspace', () => {
     await user.click(screen.getByRole('button', { name: 'Edit capsule' }))
     expect(screen.getByLabelText(/Reviewed/)).not.toBeChecked()
     expect(screen.getByLabelText(/Improved/)).not.toBeChecked()
-    expect(screen.getByLabelText('Notes')).toHaveValue(example.notes)
+    expect(screen.getByLabelText(/^Notes/)).toHaveValue(example.notes)
     await user.clear(screen.getByLabelText(/Prompt title/))
     await user.type(
       screen.getByLabelText(/Prompt title/),
@@ -264,7 +300,7 @@ describe('capsule workspace', () => {
     const { fetch, user } = start([example])
     await openExample(user)
     await user.click(screen.getByRole('button', { name: 'Edit capsule' }))
-    await user.clear(screen.getByLabelText('Notes'))
+    await user.clear(screen.getByLabelText(/^Notes/))
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(
       screen.getByRole('heading', { name: example.prompt_title })
@@ -286,9 +322,7 @@ describe('capsule workspace', () => {
     const parseJson = vi.fn()
     fetch.mockResolvedValueOnce({ ok: true, status: 204, json: parseJson })
     await user.click(screen.getByRole('button', { name: 'Delete permanently' }))
-    expect(
-      await screen.findByText('No capsules yet')
-    ).toBeVisible()
+    expect(await screen.findByText('No capsules yet')).toBeVisible()
     expect(screen.getByRole('status')).toHaveTextContent('Capsule deleted.')
     expect(fetch.mock.calls[1][1].method).toBe('DELETE')
     expect(fetch.mock.calls[1][1].body).toBeUndefined()

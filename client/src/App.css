@@ -428,6 +428,7 @@ tbody tr:hover {
   color: #8d2825;
 }
 input:not([type='checkbox']),
+select,
 textarea {
   display: block;
   width: 100%;
@@ -824,4 +825,26 @@ dd {
   *::after {
     scroll-behavior: auto !important;
   }
+}
+
+.optional {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 400;
+}
+.field-hint {
+  color: var(--muted);
+  font-size: 0.76rem;
+  margin: 0 0 0.45rem;
+}
+.notice p:last-child,
+.notice ul:last-child {
+  margin-bottom: 0;
+}
+.notice ul {
+  padding-left: 1.3rem;
+  margin-top: 0.5rem;
+}
+.notice.error a {
+  color: inherit;
 }

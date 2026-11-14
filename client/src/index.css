@@ -20,6 +20,7 @@ body {
 }
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -64,6 +65,7 @@ button:disabled {
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
   outline: 3px solid #bc7a1e;

@@ -1,8 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
-import { capsuleFields, capsuleValues } from '../capsule-fields'
+import {
+  capsuleFields,
+  capsuleValues,
+  categorySuggestions,
+  usefulnessOptions
+} from '../capsule-fields'
 
-function Field({ field, value, error, onChange }) {
-  const { name, label, rows, ...attributes } = field
+const fieldLabels = {
+  ...Object.fromEntries(capsuleFields.map(({ name, label }) => [name, label])),
+  reviewed: 'Reviewed',
+  improved: 'Improved'
+}
+
+function Field({ field, value, error, onChange, categories, savedUsefulness }) {
+  const { name, label, rows, hint, type, maxLength, ...attributes } = field
+  const descriptions = [hint && `${name}-hint`, error && `${name}-error`]
+    .filter(Boolean)
+    .join(' ')
   const props = {
     ...attributes,
     id: name,
@@ -10,18 +24,60 @@ function Field({ field, value, error, onChange }) {
     value,
     onChange: (event) => onChange(name, event.target.value),
     'aria-invalid': Boolean(error),
-    'aria-describedby': error ? `${name}-error` : undefined
+    'aria-describedby': descriptions || undefined
   }
+  let control
+  if (rows) control = <textarea {...props} maxLength={maxLength} rows={rows} />
+  else if (type === 'select') {
+    const legacy =
+      savedUsefulness &&
+      !usefulnessOptions.some((option) => option.value === savedUsefulness)
+    control = (
+      <select {...props}>
+        {usefulnessOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+        {legacy && (
+          <option value={savedUsefulness}>
+            {savedUsefulness} (saved value)
+          </option>
+        )}
+      </select>
+    )
+  } else
+    control = (
+      <input
+        {...props}
+        maxLength={maxLength}
+        type={type || 'text'}
+        list={name === 'category' ? 'category-suggestions' : undefined}
+      />
+    )
+
   return (
     <div className={`field ${rows ? 'wide' : ''}`}>
       <label htmlFor={name}>
         {label}
-        {field.required && <span className="required"> *</span>}
+        {field.required ? (
+          <span className="required"> *</span>
+        ) : (
+          <span className="optional"> (optional)</span>
+        )}
       </label>
-      {rows ? (
-        <textarea {...props} rows={rows} />
-      ) : (
-        <input {...props} type={field.type || 'text'} />
+      {hint && (
+        <p className="field-hint" id={`${name}-hint`}>
+          {hint}
+        </p>
+      )}
+      {control}
+      {name === 'category' && (
+        <datalist id="category-suggestions">
+          {categories.map((category) => (
+            <option key={category} value={category} />
+          ))}
+        </datalist>
       )}
       {error && (
         <p className="field-error" id={`${name}-error`}>
@@ -34,6 +90,7 @@ function Field({ field, value, error, onChange }) {
 
 export default function CapsuleForm({
   capsule,
+  categories = categorySuggestions([]),
   onSave,
   onCancel,
   onSessionExpired
@@ -44,16 +101,28 @@ export default function CapsuleForm({
   const [saving, setSaving] = useState(false)
   const [errorAttempt, setErrorAttempt] = useState(0)
   const form = useRef(null)
+  const summary = useRef(null)
   const pending = useRef(false)
+  const errorEntries = Object.entries(errors).filter(([, message]) =>
+    Boolean(message)
+  )
 
   useEffect(() => {
-    if (errorAttempt)
-      form.current?.querySelector('[aria-invalid="true"]')?.focus()
+    if (errorAttempt) {
+      const invalid = form.current?.querySelector('[aria-invalid="true"]')
+      if (invalid) invalid.focus()
+      else summary.current?.focus()
+    }
   }, [errorAttempt])
 
   function change(name, value) {
     setValues((current) => ({ ...current, [name]: value }))
     setErrors((current) => ({ ...current, [name]: '' }))
+  }
+
+  function focusField(event, name) {
+    event.preventDefault()
+    form.current?.elements.namedItem(name)?.focus()
   }
 
   async function submit(event) {
@@ -82,7 +151,9 @@ export default function CapsuleForm({
     }
     setErrors(invalid)
     if (Object.keys(invalid).length) {
-      setFailure('Check the highlighted fields, then save again.')
+      setFailure(
+        'Your capsule has not been saved. Correct the following fields.'
+      )
       setErrorAttempt((current) => current + 1)
       return
     }
@@ -90,13 +161,16 @@ export default function CapsuleForm({
     setSaving(true)
     setFailure('')
     try {
-      await onSave(values)
+      const fields = { ...values }
+      // The API defaults an omitted version, but rejects an explicitly empty one.
+      if (!fields.prompt_version.trim()) delete fields.prompt_version
+      await onSave(fields)
     } catch (error) {
       if (error.status === 401) onSessionExpired()
       else {
         setFailure(
           error.status === 400 && error.details?.length
-            ? 'Check the highlighted fields. Your changes have not been saved.'
+            ? 'Your changes have not been saved. Correct the following errors.'
             : error.message
         )
         setErrors(
@@ -122,6 +196,8 @@ export default function CapsuleForm({
           value={values[field.name]}
           error={errors[field.name]}
           onChange={change}
+          categories={categories}
+          savedUsefulness={capsule?.usefulness}
         />
       ))
   }
@@ -129,9 +205,27 @@ export default function CapsuleForm({
   return (
     <form ref={form} noValidate onSubmit={submit} className="capsule-form">
       {failure && (
-        <p className="notice error" role="alert">
-          {failure}
-        </p>
+        <div ref={summary} tabIndex={-1} className="notice error" role="alert">
+          <p>{failure}</p>
+          {errorEntries.length > 0 && (
+            <ul>
+              {errorEntries.map(([name, message]) => (
+                <li key={name}>
+                  {Object.hasOwn(fieldLabels, name) ? (
+                    <a
+                      href={`#${name}`}
+                      onClick={(event) => focusField(event, name)}
+                    >
+                      {fieldLabels[name]}: {message}
+                    </a>
+                  ) : (
+                    message
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
       <fieldset disabled={saving}>
         <legend>
@@ -139,7 +233,7 @@ export default function CapsuleForm({
         </legend>
         <p className="section-description">
           Give this prompt a home and a title you can find again.{' '}
-          <span>Required fields are marked *.</span>
+          <span>Required fields are marked *. Other fields are optional.</span>
         </p>
         <div className="field-grid">
           {fields([
@@ -174,22 +268,31 @@ export default function CapsuleForm({
             'notes'
           ])}
           <div className="checks wide">
-            <label>
-              <input
-                type="checkbox"
-                checked={values.reviewed}
-                onChange={(event) => change('reviewed', event.target.checked)}
-              />{' '}
-              Reviewed <span>I have checked the response.</span>
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={values.improved}
-                onChange={(event) => change('improved', event.target.checked)}
-              />{' '}
-              Improved <span>I have refined the prompt.</span>
-            </label>
+            {[
+              ['reviewed', 'Reviewed', 'I have checked the response.'],
+              ['improved', 'Improved', 'I have improved the AI output.']
+            ].map(([name, label, hint]) => (
+              <div key={name}>
+                <label htmlFor={name}>
+                  <input
+                    type="checkbox"
+                    id={name}
+                    name={name}
+                    checked={values[name]}
+                    aria-invalid={Boolean(errors[name])}
+                    aria-describedby={`${name}-hint${errors[name] ? ` ${name}-error` : ''}`}
+                    onChange={(event) => change(name, event.target.checked)}
+                  />
+                  {label}
+                  <span id={`${name}-hint`}>{hint}</span>
+                </label>
+                {errors[name] && (
+                  <p className="field-error" id={`${name}-error`}>
+                    {errors[name]}
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </fieldset>

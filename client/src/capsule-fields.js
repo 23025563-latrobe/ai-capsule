@@ -15,23 +15,30 @@ export const capsuleFields = [
     name: 'prompt_version',
     label: 'Prompt version',
     maxLength: 40,
-    required: true
+    hint: 'For example, v1 or v2. Leave blank to use version 1.'
   },
-  { name: 'category', label: 'Category', maxLength: 80 },
+  {
+    name: 'category',
+    label: 'Category',
+    maxLength: 80,
+    hint: 'Choose a suggestion or enter your own.'
+  },
   {
     name: 'prompt_text',
     label: 'Prompt text',
     maxLength: 20000,
     required: true,
+    hint: 'Paste the prompt you sent to the AI tool.',
     rows: 8
   },
   {
     name: 'response_summary',
     label: 'Response summary',
     maxLength: 10000,
+    hint: 'Summarise the response you received.',
     rows: 5
   },
-  { name: 'usefulness', label: 'Usefulness', maxLength: 200 },
+  { name: 'usefulness', label: 'Usefulness', maxLength: 200, type: 'select' },
   {
     name: 'screenshot_url',
     label: 'Screenshot evidence URL',
@@ -46,12 +53,39 @@ export function capsuleValues(capsule = {}) {
     ...Object.fromEntries(
       capsuleFields.map(({ name }) => [
         name,
-        capsule[name] ?? (name === 'prompt_version' ? '1' : '')
+        capsule[name] ?? (name === 'prompt_version' ? 'v1' : '')
       ])
     ),
     reviewed: capsule.reviewed ?? false,
     improved: capsule.improved ?? false
   }
+}
+
+export const usefulnessOptions = [
+  { value: '', label: 'Not rated' },
+  { value: 'Good', label: 'Good' },
+  { value: 'Needs improvement', label: 'Needs improvement' }
+]
+
+export function categorySuggestions(capsules) {
+  const suggestions = [
+    'Coding',
+    'Writing',
+    'Research',
+    'Study',
+    'Planning',
+    'Other'
+  ]
+  const seen = new Set(suggestions.map((value) => value.toLowerCase()))
+  for (const capsule of capsules) {
+    const category =
+      typeof capsule.category === 'string' ? capsule.category.trim() : ''
+    if (category && !seen.has(category.toLowerCase())) {
+      suggestions.push(category)
+      seen.add(category.toLowerCase())
+    }
+  }
+  return suggestions
 }
 
 export function formatDate(value, full = false) {
