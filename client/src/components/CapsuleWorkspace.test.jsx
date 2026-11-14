@@ -71,8 +71,11 @@ describe('capsule workspace', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'Loading your capsules'
     )
+    expect(screen.queryByText('0 matches')).not.toBeInTheDocument()
     resolve(json({ capsules: [] }))
     expect(await screen.findByText('No capsules yet')).toBeVisible()
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(screen.queryByText('0 matches')).not.toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Create your first capsule' })
     ).toBeEnabled()
@@ -253,6 +256,56 @@ describe('capsule workspace', () => {
     expect(
       screen.queryByRole('button', { name: legacy.prompt_title })
     ).not.toBeInTheDocument()
+  })
+
+  it('can filter uncategorised records without hiding saved categories', async () => {
+    const uncategorised = capsuleRecord(35, {
+      prompt_title: 'Uncategorised example',
+      category: ''
+    })
+    const categorised = capsuleRecord(36, {
+      prompt_title: 'Categorised example',
+      category: 'Field notes'
+    })
+    const { user } = start([uncategorised, categorised])
+    await screen.findByRole('button', { name: uncategorised.prompt_title })
+    const category = screen.getByLabelText('Category')
+    expect(
+      within(category).getByRole('option', { name: 'Uncategorised' })
+    ).toBeInTheDocument()
+    await user.selectOptions(category, 'uncategorised')
+
+    expect(
+      screen.getByRole('button', { name: uncategorised.prompt_title })
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: categorised.prompt_title })
+    ).not.toBeInTheDocument()
+  })
+
+  it('offers a one-step reset while filtered results remain', async () => {
+    const second = capsuleRecord(43, {
+      prompt_title: 'A second catalogue capsule'
+    })
+    const { user } = start([example, second])
+    await screen.findByRole('button', { name: example.prompt_title })
+    const category = screen.getByLabelText('Category')
+    await user.selectOptions(category, 'category:accessibility')
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Search capsules' }),
+      'catalogue'
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'Clear search and filters' })
+    )
+
+    expect(category).toHaveValue('all')
+    expect(
+      screen.getByRole('searchbox', { name: 'Search capsules' })
+    ).toHaveValue('')
+    expect(
+      screen.getByRole('button', { name: second.prompt_title })
+    ).toBeVisible()
   })
 
   it('clears search and filters from the no-matches state', async () => {

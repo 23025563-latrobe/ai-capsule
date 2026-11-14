@@ -68,6 +68,9 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
   const categories = [...categoryOptions.entries()].sort((left, right) =>
     left[1].localeCompare(right[1])
   )
+  const hasUncategorisedCapsules = capsules.some(
+    (capsule) => !capsule.category?.trim()
+  )
   const standardUsefulness = new Set(
     usefulnessOptions.map(({ value }) => value)
   )
@@ -100,8 +103,11 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
     ) {
       return false
     }
+    if (categoryFilter === 'uncategorised' && capsule.category?.trim()) {
+      return false
+    }
     if (
-      categoryFilter !== 'all' &&
+      categoryFilter.startsWith('category:') &&
       `category:${capsule.category?.trim().toLowerCase() ?? ''}` !==
         categoryFilter
     ) {
@@ -117,6 +123,12 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
     if (reviewFilter === 'not-reviewed' && capsule.reviewed) return false
     return true
   })
+  const hasActiveFilters =
+    Boolean(searchTerm) ||
+    categoryFilter !== 'all' ||
+    usefulnessFilter !== 'all' ||
+    reviewFilter !== 'all'
+  const showMatchingCount = !loading && !loadError && capsules.length > 0
 
   function clearSearchAndFilters() {
     setSearchText('')
@@ -208,12 +220,14 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
             <div>
               <h1>
                 Capsule workspace
-                <span
-                  className="count"
-                  aria-label={`${filteredCapsules.length} matching capsules`}
-                >
-                  {filteredCapsules.length}
-                </span>
+                {showMatchingCount && (
+                  <span
+                    className="count"
+                    aria-label={`${filteredCapsules.length} matching capsules`}
+                  >
+                    {filteredCapsules.length}
+                  </span>
+                )}
               </h1>
               <p className="muted">
                 Manage your saved prompts and response notes.
@@ -230,10 +244,12 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
             <div className="panel-heading">
               <h2>Your capsules</h2>
               <div className="panel-summary">
-                <span className="muted small" aria-live="polite">
-                  {filteredCapsules.length}{' '}
-                  {filteredCapsules.length === 1 ? 'match' : 'matches'}
-                </span>
+                {showMatchingCount && (
+                  <span className="muted small" aria-live="polite">
+                    {filteredCapsules.length}{' '}
+                    {filteredCapsules.length === 1 ? 'match' : 'matches'}
+                  </span>
+                )}
                 <span className="muted small">Most recent first</span>
               </div>
             </div>
@@ -305,6 +321,9 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
                         }
                       >
                         <option value="all">All categories</option>
+                        {hasUncategorisedCapsules && (
+                          <option value="uncategorised">Uncategorised</option>
+                        )}
                         {categories.map(([value, label]) => (
                           <option key={value} value={`category:${value}`}>
                             {label}
@@ -348,6 +367,15 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
                       </select>
                     </div>
                   </div>
+                  {hasActiveFilters && filteredCapsules.length > 0 && (
+                    <button
+                      className="quiet filter-reset"
+                      type="button"
+                      onClick={clearSearchAndFilters}
+                    >
+                      Clear search and filters
+                    </button>
+                  )}
                 </div>
                 {filteredCapsules.length ? (
                   <div className="table-wrap">

@@ -257,6 +257,12 @@ main {
 .filter-field select {
   min-width: 0;
 }
+.filter-reset {
+  justify-self: end;
+  min-height: 44px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.74rem;
+}
 .table-wrap {
   overflow-x: auto;
 }
