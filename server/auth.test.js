@@ -79,7 +79,7 @@ test('health remains public and missing OAuth configuration fails clearly', asyn
     assert.equal(response.status, 503);
     assert.match((await response.json()).error, /configuration missing/);
   }
-  assert.equal((await request('/api/capsules')).status, 404);
+  assert.equal((await request('/api/capsules')).status, 401);
 });
 
 test('OAuth initiation creates random state, PKCE and a short-lived secure cookie', async (t) => {
