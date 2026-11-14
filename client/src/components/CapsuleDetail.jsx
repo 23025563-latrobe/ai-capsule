@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { evidenceUrl, formatDate } from '../capsule-fields'
 
 export function ReflectionStatus({ capsule }) {
@@ -14,7 +15,31 @@ export function ReflectionStatus({ capsule }) {
 }
 
 export default function CapsuleDetail({ capsule, onEdit, onDelete }) {
+  const [copyState, setCopyState] = useState('')
+  const feedbackTimer = useRef(null)
   const screenshot = evidenceUrl(capsule.screenshot_url)
+
+  useEffect(
+    () => () => {
+      clearTimeout(feedbackTimer.current)
+    },
+    []
+  )
+
+  async function copyPrompt() {
+    clearTimeout(feedbackTimer.current)
+    try {
+      if (!navigator.clipboard?.writeText)
+        throw new Error('Clipboard unavailable')
+      await navigator.clipboard.writeText(capsule.prompt_text)
+      setCopyState('success')
+      feedbackTimer.current = setTimeout(() => setCopyState(''), 1800)
+    } catch {
+      setCopyState('error')
+      feedbackTimer.current = setTimeout(() => setCopyState(''), 4000)
+    }
+  }
+
   return (
     <>
       <div className="detail-heading">
@@ -41,7 +66,25 @@ export default function CapsuleDetail({ capsule, onEdit, onDelete }) {
       <div className="detail-grid">
         <div className="detail-main">
           <section className="panel reading">
-            <h2>Prompt</h2>
+            <div className="reading-heading">
+              <h2>Prompt</h2>
+              <button className="secondary copy-prompt" onClick={copyPrompt}>
+                {copyState === 'success' ? 'Copied' : 'Copy prompt'}
+              </button>
+            </div>
+            <p
+              className={copyState === 'error' ? 'copy-error' : 'sr-only'}
+              role="status"
+              aria-label="Prompt copy status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {copyState === 'success'
+                ? 'Prompt copied to clipboard.'
+                : copyState === 'error'
+                  ? 'Could not copy. Select the prompt text and copy it manually.'
+                  : ''}
+            </p>
             <p className="preserve prompt-copy">{capsule.prompt_text}</p>
           </section>
           <section className="panel reading">

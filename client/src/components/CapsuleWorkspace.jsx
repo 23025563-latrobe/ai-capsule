@@ -183,7 +183,7 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
                     <tr>
                       <th scope="col">Capsule</th>
                       <th scope="col">Project</th>
-                      <th scope="col">Reflection</th>
+                      <th scope="col">Review status</th>
                       <th scope="col">Created</th>
                     </tr>
                   </thead>
@@ -196,7 +196,7 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
                             onClick={() => show('detail', capsule)}
                           >
                             {capsule.prompt_title}
-                            <span aria-hidden="true">↗</span>
+                            <span aria-hidden="true">›</span>
                           </button>
                           <span className="record-sub">
                             Version {capsule.prompt_version} ·{' '}
@@ -204,7 +204,7 @@ export default function CapsuleWorkspace({ onSessionExpired }) {
                           </span>
                         </td>
                         <td>{capsule.project_name}</td>
-                        <td>
+                        <td data-label="Review status">
                           <ReflectionStatus capsule={capsule} />
                         </td>
                         <td>

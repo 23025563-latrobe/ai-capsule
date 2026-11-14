@@ -77,6 +77,28 @@ describe('capsule workspace', () => {
     ).toBeEnabled()
   })
 
+  it('labels review badges as review status in the list', async () => {
+    start([example])
+    expect(
+      await screen.findByRole('columnheader', { name: 'Review status' })
+    ).toBeVisible()
+    expect(screen.getByText('Not reviewed').closest('td')).toHaveAttribute(
+      'data-label',
+      'Review status'
+    )
+    expect(
+      screen.queryByRole('columnheader', { name: 'Reflection' })
+    ).toBeNull()
+    const titleButton = screen.getByRole('button', {
+      name: example.prompt_title
+    })
+    expect(titleButton.querySelector('span')).toHaveTextContent('›')
+    expect(titleButton.querySelector('span')).toHaveAttribute(
+      'aria-hidden',
+      'true'
+    )
+  })
+
   it('shows a recoverable loading failure and retries', async () => {
     const fetch = vi
       .fn()
@@ -171,7 +193,9 @@ describe('capsule workspace', () => {
     expect(
       await screen.findByRole('heading', { name: 'Draft a reading guide' })
     ).toBeVisible()
-    expect(screen.getByRole('status')).toHaveTextContent('Capsule saved.')
+    expect(
+      screen.getByText('Capsule saved.', { selector: '[role="status"]' })
+    ).toBeVisible()
     expect(fetch).toHaveBeenCalledTimes(2)
   })
 
