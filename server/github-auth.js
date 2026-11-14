@@ -84,5 +84,5 @@ export function createGitHubAuth(config, { fetchProvider = fetch, states = creat
     res.sendStatus(204);
   });
 
-  return { router, verifySession: sessions.verify };
+  return { router, verifySession: sessions.verify, requireUser: sessions.requireUser };
 }
