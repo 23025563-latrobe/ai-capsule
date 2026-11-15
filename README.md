@@ -24,8 +24,6 @@ A recorded demonstration of AI Capsule is available through Google Drive:
 
 The demonstration follows the deployed application through GitHub sign-in and capsule creation, viewing, editing and deletion. It also presents the public health endpoint, the two required unauthenticated and invalid-token API checks, Azure configuration and the storage approach. Existing sample capsules are fictional demonstration data.
 
-Submit the **3–5 minute MP4 with working audio** directly to the LMS alongside the source ZIP. The Google Drive link provides an additional viewing option and does not replace the required MP4 upload.
-
 ## Application screenshots
 
 The following screenshots show the deployed application. Capsule records shown are fictional demonstration data.
@@ -94,7 +92,7 @@ The application uses pathname-based page handling and native links; React Router
 
 ## Install and run locally
 
-Clone the [GitHub repository](https://github.com/23025563-latrobe/ai-capsule), or extract the submitted source ZIP. The repository is private, so cloning requires GitHub access. Git is only needed for cloning.
+Clone the [GitHub repository](https://github.com/23025563-latrobe/ai-capsule), or extract the source ZIP. The repository is private, so cloning requires GitHub access. Git is only needed for cloning.
 
 Prerequisites are Node.js **24.19.0**, npm and OpenSSL with `-addext` support. Checks were run on Node 24.19.0; `.nvmrc` selects major version 24. The deployed Azure runtime was observed as Node 24.22.3. The commands below use Bash-compatible shell syntax.
 
@@ -290,7 +288,7 @@ Invalid input or malformed JSON returns 400, missing/foreign records 404, failed
 
 ## Deployment and verification
 
-The application runs in East Asia in `rg-ai-capsule-student`, on Linux Free F1 plan `plan-ai-capsule-free`, web app `app-ai-capsule-23025563`. The deployment artifact contains the built frontend, server runtime and production dependencies. Environment files, certificates, local databases and test files are excluded. This deployment artifact is separate from the source ZIP required for assessment.
+The application runs in East Asia in `rg-ai-capsule-student`, on Linux Free F1 plan `plan-ai-capsule-free`, web app `app-ai-capsule-23025563`. The deployment artifact contains the built frontend, server runtime and production dependencies. Environment files, certificates, local databases and test files are excluded. The deployment package is separate from the source archive used to run or review the project.
 
 Azure settings enable HTTPS-only access, Node 24 LTS and `npm start`. The SQL database uses General Purpose serverless Gen5, maximum 2 vCores, minimum 0.5, 32 GB and local backups. Its actual properties were verified as `useFreeLimit=true` and `freeLimitExhaustionBehavior=AutoPause`; subscription spending limit remains On. No paid overages or optional paid monitoring/networking resources were enabled.
 
@@ -356,21 +354,6 @@ The original logs did not retain enough diagnostic information to prove the prec
 I chose local SQLite for straightforward development and a separate relational Azure SQL database for cloud persistence. This keeps data outside the deployed App Service package and avoids relying on SQLite locking over a network file share. I can explain how both adapters preserve the same owner-scoped API contract and why migration privileges are separate from runtime permissions.
 
 JWT verification and protected API behavior were checked through automated HTTP tests and the deployed no-cookie/fake-token requests. CRUD and ownership were covered by temporary-database HTTP tests and real SQL integration; the deployed browser checks are separately recorded as my manual verification.
-
-## Submission files
-
-Upload the complete source-code ZIP and the **3–5 minute MP4 with working audio** directly to the LMS. The Drive link is supplementary. The source ZIP should contain the project source, tests, both package manifests and lockfiles, `.nvmrc`, `.env.example`, database setup/migration files, README and screenshots under one `ai-capsule/` directory.
-
-Exclude real `.env` files, certificates and private keys, database files/exports, `node_modules`, build output, coverage, logs, `.git` and deployment archives. Keep the MP4 as its separate upload. After all intended files have been reviewed and committed, a source-only ZIP can be created from that reviewed commit:
-
-```bash
-git status --short
-git archive --format=zip --prefix=ai-capsule/ \
-  --output=/tmp/ai-capsule-source.zip HEAD
-unzip -l /tmp/ai-capsule-source.zip
-```
-
-Inspect the archive and test installation from a fresh extraction before uploading. Watch the MP4 and verify its duration, audio and required evidence: the public URL and health response, both 401 cURL checks before login, GitHub OAuth, complete deployed CRUD, safe cloud settings/environment-variable names, the database approach and one deployment issue or limitation. Never show a real JWT or secret. Check both files again after uploading to the LMS.
 
 ## Limitations and academic use
 
