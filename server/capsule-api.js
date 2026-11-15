@@ -37,23 +37,23 @@ export function createCapsuleApi({ storage, requireUser, appOrigin }) {
   });
 
   const jsonBody = express.json({ limit: '128kb' });
-  router.get('/', (req, res) => {
-    res.json({ capsules: storage.list(req.user.id).map(asJson) });
+  router.get('/', async (req, res) => {
+    res.json({ capsules: (await storage.list(req.user.id)).map(asJson) });
   });
-  router.post('/', jsonBody, validateBody, (req, res) => {
-    const capsule = storage.create(req.user.id, req.capsuleFields);
+  router.post('/', jsonBody, validateBody, async (req, res) => {
+    const capsule = await storage.create(req.user.id, req.capsuleFields);
     res.status(201).json({ capsule: asJson(capsule) });
   });
-  router.put('/:id', validateId, jsonBody, validateBody, (req, res) => {
-    const capsule = storage.update(req.user.id, req.capsuleId, req.capsuleFields);
+  router.put('/:id', validateId, jsonBody, validateBody, async (req, res) => {
+    const capsule = await storage.update(req.user.id, req.capsuleId, req.capsuleFields);
     if (!capsule) return res.status(404).json({ error: 'Capsule not found.' });
     res.json({ capsule: asJson(capsule) });
   });
-  router.delete('/:id', validateId, jsonBody, (req, res) => {
+  router.delete('/:id', validateId, jsonBody, async (req, res) => {
     if (req.body !== undefined || Number(req.get('content-length')) > 0 || req.get('transfer-encoding')) {
       return res.status(400).json({ error: 'DELETE requests must not include a body.' });
     }
-    if (!storage.delete(req.user.id, req.capsuleId)) {
+    if (!await storage.delete(req.user.id, req.capsuleId)) {
       return res.status(404).json({ error: 'Capsule not found.' });
     }
     res.status(204).end();
