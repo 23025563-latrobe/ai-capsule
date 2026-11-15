@@ -242,8 +242,9 @@ no Always On or availability guarantee. SQL free allowance is 100,000 vCore seco
 32 GB data and 32 GB backup per month, with idle auto-pause and unavailability until
 the next month when the free limit is exhausted. Do not promise uninterrupted access
 throughout the marking period. Verify current quotas and resource configuration
-when changing deployment settings. The final README, deployed MP4 demonstration and
-source ZIP remain outstanding.
+when changing deployment settings. The README includes the user-supplied demonstration video link. The student reports
+recording the MP4; no local MP4 or final source ZIP has been independently inspected.
+Both files must be uploaded directly to the LMS.
 
 References:
 

@@ -14,19 +14,57 @@ The application stores material entered by the user. It does not call an AI mode
 
 Sign in with GitHub to open your capsule workspace. Each account sees only its own records; a new account starts with an empty workspace. The public overview remains available without signing in.
 
-React and Express run together on Azure App Service, with Azure SQL Database for production storage. Free hosting can take time to start, and the database can pause. If an initial request fails, allow the service to start and retry. The free configuration does not guarantee uninterrupted availability.
+React and Express run together on Azure App Service, with Azure SQL Database for production storage. The application can respond slowly while the free hosting service starts or the database resumes after an idle pause. If an initial request fails, wait briefly and retry. Availability depends on the free-tier limits.
 
 ## Video demonstration
 
-The assignment requires a **3–5 minute MP4 with working audio**, uploaded directly to the LMS alongside the source ZIP. No recorded video or video link has been supplied for this repository yet. An external link would be supplementary and would not replace the MP4 upload.
+A recorded demonstration of AI Capsule is available through Google Drive:
 
-The recording sequence and outstanding evidence are in the [submission checklist](docs/submission-checklist.md).
+[**Watch the AI Capsule Video Demonstration**](https://drive.google.com/file/d/1NOAJbN7GZYQGTYBbIMDl1adtgJrE7OIU/view?usp=sharing)
+
+The demonstration follows the deployed application through GitHub sign-in and capsule creation, viewing, editing and deletion. It also presents the public health endpoint, the two required unauthenticated and invalid-token API checks, Azure configuration and the storage approach. Existing sample capsules are fictional demonstration data.
+
+Submit the **3–5 minute MP4 with working audio** directly to the LMS alongside the source ZIP. The Google Drive link provides an additional viewing option and does not replace the required MP4 upload.
 
 ## Application screenshots
 
-Application screenshots have not yet been added to the repository. Browser capture was unavailable during documentation preparation, so no generated mockups or broken image references are included.
+The following screenshots show the deployed application. Capsule records shown are fictional demonstration data.
 
-The [screenshot checklist](docs/submission-checklist.md#application-screenshots) lists four deployed views to capture: login, dashboard, form and capsule details. Use fictional records and add the actual images before submission.
+### Public overview
+
+![Public overview introducing the application and its record, reflect and refine workflow.](docs/screenshots/overview.png)
+
+*Figure 1. Public overview introducing the application and its record, reflect and refine workflow.*
+
+### GitHub sign-in
+
+![Sign-in page linking to GitHub OAuth for access to the personal capsule workspace.](docs/screenshots/github-login.png)
+
+*Figure 2. Sign-in page linking to GitHub OAuth for access to the personal capsule workspace.*
+
+### GitHub OAuth authorisation
+
+![GitHub consent screen for the production OAuth App, requesting access to public account data.](docs/screenshots/github-oauth-authorisation.png)
+
+*Figure 3. GitHub consent screen for the production OAuth App, requesting access to public account data.*
+
+### Capsule dashboard
+
+![Authenticated dashboard showing saved capsules, search, category and usefulness filters, and review status.](docs/screenshots/capsule-dashboard.png)
+
+*Figure 4. Authenticated dashboard showing saved capsules, search, category and usefulness filters, and review status.*
+
+### Create a capsule
+
+![Upper section of the creation form showing project, title, version, category and prompt fields.](docs/screenshots/create-capsule-form.png)
+
+*Figure 5. Upper section of the creation form showing project, title, version, category and prompt fields.*
+
+### Capsule details
+
+![Saved capsule with its prompt, Copy prompt action, response summary, notes and review metadata.](docs/screenshots/capsule-details.png)
+
+*Figure 6. Saved capsule with its prompt, Copy prompt action, response summary, notes and review metadata.*
 
 ## Features
 
@@ -56,7 +94,7 @@ The application uses pathname-based page handling and native links; React Router
 
 ## Install and run locally
 
-The [GitHub repository](https://github.com/23025563-latrobe/ai-capsule) is private. GitHub access is required to clone it. The submitted source ZIP can be extracted and run without Git.
+Clone the [GitHub repository](https://github.com/23025563-latrobe/ai-capsule), or extract the submitted source ZIP. The repository is private, so cloning requires GitHub access. Git is only needed for cloning.
 
 Prerequisites are Node.js **24.19.0**, npm and OpenSSL with `-addext` support. Checks were run on Node 24.19.0; `.nvmrc` selects major version 24. The deployed Azure runtime was observed as Node 24.22.3. The commands below use Bash-compatible shell syntax.
 
@@ -159,7 +197,7 @@ npm run build
 npm start
 ```
 
-`npm start` runs `node server/index.js` without watch mode and does not load `.env`. In production, Azure provides the environment settings and `PORT`; Express binds to `0.0.0.0`. `npm run build` creates `client/dist`, which Express serves with the API from one origin. Unknown `/api` routes return JSON errors rather than frontend HTML.
+`npm start` runs `node server/index.js` without watch mode and does not load `.env`. In production, Azure provides the environment settings and `PORT`; Express binds to `0.0.0.0`. `npm run build` creates `client/dist`, which Express serves with the API from one origin. Unknown `/api` routes return JSON errors.
 
 For a local non-watch backend using `.env`, run `node --env-file=.env server/index.js` instead of `npm run dev`; keep using Vite HTTPS for the local OAuth flow.
 
@@ -287,17 +325,25 @@ curl -sS -w '\nHTTP %{http_code}\n' \
 HTTP 200
 ```
 
+### Protected API check evidence
+
+![Terminal showing HTTP 401 Unauthorized for requests to the deployed capsule API without a token and with a deliberately invalid token.](docs/screenshots/protected-api-curl-checks.png)
+
+*Figure 7. The deployed GET /api/capsules endpoint returns HTTP 401 Unauthorized both without a token and with the deliberately invalid token=fake-token-123.*
+
+The screenshot shows Azure routing-affinity cookies in the response headers. These are platform routing cookies, not the application's JWT cookie named `token`. Receiving them does not establish an authenticated application session. The second request uses only the deliberately invalid value `fake-token-123`.
+
 These live requests were repeated during final deployment review. The HTTPS frontend and JavaScript asset returned 200, and all 19 deployed runtime/build file hashes matched reviewed source and the fresh build. No restart was needed for that final comparison.
 
 Automated checks cover authentication failures on every CRUD route, ownership isolation, validation, asynchronous failures and storage behavior. Previous Azure integration checks exercised the actual database through the authorized migration identity. OAuth initiation/state/PKCE, signed-out session 401, callback error handling and logout response attributes were checked against the public service without extracting a real JWT.
 
-The student reported that deployed browser checks and demonstration records worked correctly using RLirri. That is user-reported manual evidence. Browser automation was unavailable, so it is not described as direct automated observation of real OAuth or browser CRUD. The final recorded MP4 remains required submission evidence.
+I manually checked the deployed application and demonstration records using RLirri and recorded a video demonstration. Browser automation was unavailable for these checks.
 
 ## AI assistance and individual contribution
 
-I used ChatGPT and Codex extensively for planning, implementation, interface refinement, SQL queries, OAuth/JWT integration, Azure configuration, debugging, tests and documentation. AI assistance also helped draft the clearly labelled fictional demonstration records.
+I used ChatGPT and Codex for planning, implementation, interface refinement, SQL queries, OAuth/JWT integration, Azure configuration and deployment, debugging, tests and documentation. AI assistance also helped draft the clearly labelled fictional demonstration records.
 
-I set the project scope, reviewed implementation choices and changes, configured the OAuth Apps, and manually checked the deployed application and demonstration records. I am responsible for understanding and explaining the submitted code and verifying the final submission. This disclosure does not claim that I independently wrote every line of code.
+I set the project scope, reviewed implementation choices and changes, configured the OAuth Apps, and manually checked the deployed application and demonstration records. I am responsible for understanding and explaining the submitted code and verifying the final submission.
 
 ### Problem found and corrected
 
@@ -311,13 +357,29 @@ I chose local SQLite for straightforward development and a separate relational A
 
 JWT verification and protected API behavior were checked through automated HTTP tests and the deployed no-cookie/fake-token requests. CRUD and ownership were covered by temporary-database HTTP tests and real SQL integration; the deployed browser checks are separately recorded as my manual verification.
 
+## Submission files
+
+Upload the complete source-code ZIP and the **3–5 minute MP4 with working audio** directly to the LMS. The Drive link is supplementary. The source ZIP should contain the project source, tests, both package manifests and lockfiles, `.nvmrc`, `.env.example`, database setup/migration files, README and screenshots under one `ai-capsule/` directory.
+
+Exclude real `.env` files, certificates and private keys, database files/exports, `node_modules`, build output, coverage, logs, `.git` and deployment archives. Keep the MP4 as its separate upload. After all intended files have been reviewed and committed, a source-only ZIP can be created from that reviewed commit:
+
+```bash
+git status --short
+git archive --format=zip --prefix=ai-capsule/ \
+  --output=/tmp/ai-capsule-source.zip HEAD
+unzip -l /tmp/ai-capsule-source.zip
+```
+
+Inspect the archive and test installation from a fresh extraction before uploading. Watch the MP4 and verify its duration, audio and required evidence: the public URL and health response, both 401 cURL checks before login, GitHub OAuth, complete deployed CRUD, safe cloud settings/environment-variable names, the database approach and one deployment issue or limitation. Never show a real JWT or secret. Check both files again after uploading to the LMS.
+
 ## Limitations and academic use
 
+- The application uses free Azure hosting and a free database allowance. Initial page loads and database requests can be slow after inactivity while the services resume. Later requests may be faster once the application and database are running.
 - F1 has documented limits including 60 CPU minutes/day, 3 CPU minutes per five-minute interval, 1 GB storage, 1,024 MB memory and a 165 MB bandwidth quota. It has no Always On or availability guarantee and can stop serving when limits are reached.
 - Azure SQL's free allowance is 100,000 vCore-seconds, 32 GB data and 32 GB backup per month. Free-limit AutoPause can make it unavailable until the next month. The deployed resource reports an idle pause setting of 60 minutes; an attempt to change it to 15 was rejected because this free configuration permits only the provider default. Idle suspension has not been timed directly.
 - OAuth state is held in process memory. A restart during login can invalidate the in-progress flow; start a fresh login. The current free plan uses one instance.
 - There are no AI-generation calls, screenshot uploads, collaborative sharing or automatic ratings. Screenshot evidence is an optional URL field.
 
-Keep the deployment available until marking is complete and monitor free allowances without enabling paid overages. The application is an academic demonstration, not a promise of uninterrupted service or a production security certification.
+The deployment must remain available until marking is complete. Free allowances need to be monitored throughout this period; paid overages are disabled.
 
 © 2026 Ruixin Huang · La Trobe University Student ID: 23025563. Developed for the Cloud-Based Web Application assessment. Submitted work and any use of AI assistance remain the student's responsibility.
