@@ -4,7 +4,7 @@ import { EventEmitter } from 'node:events';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { azureSqlConfig, connectAzureSql, createAzureSqlStorage } from './azure-sql.js';
+import { azureSqlConfig, connectAzureSql, createAzureSqlStorage, sqlFailureCode } from './azure-sql.js';
 import { openStorage } from './storage.js';
 
 const env = { AZURE_SQL_SERVER: 'fictional.database.windows.net', AZURE_SQL_DATABASE: 'capsules' };
@@ -133,4 +133,12 @@ test('SQL selection verifies schema without DDL, closes on failure and never fal
   await assert.rejects(openStorage(config, async () => failedPool), /schema is unavailable/);
   assert.equal(failedPool.closed, true);
   await assert.rejects(openStorage(config, async () => { throw new Error('no connection'); }), /no connection/);
+});
+
+test('startup diagnostics expose only approved driver codes and numeric SQL errors', () => {
+  const error = { code: 'ELOGIN', message: 'private authentication information',
+    originalError: { info: { number: 40615, message: 'private network details' } } };
+  assert.equal(sqlFailureCode(error), 'ELOGIN; SQL 40615');
+  assert.equal(sqlFailureCode({ code: 'private-value', message: 'secret' }), 'unknown');
+  assert.equal(sqlFailureCode({ code: 'EREQUEST', precedingErrors: [{ number: 229 }] }), 'EREQUEST; SQL 229');
 });

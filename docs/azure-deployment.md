@@ -15,7 +15,9 @@ The application is deployed in East Asia, in `rg-ai-capsule-student`:
 The Azure for Students subscription is Enabled, quota identifier
 `AzureForStudents_2018-01-01`, with spending limit On. No paid tier, paid overage,
 monitoring resource, private endpoint or extra storage resource was enabled.
-Production OAuth client credentials are still pending.
+Production OAuth client credentials are configured. Their presence and the exact
+production origin/callback were verified without displaying values. Real browser
+login remains pending.
 
 ## Build and start
 
@@ -94,8 +96,12 @@ Resolving the managed identity may require appropriate tenant directory permissi
 verify this during provisioning rather than granting broad directory access blindly.
 Restrict SQL firewall rules to the web app's required outbound addresses. Do not
 open the firewall to all IP addresses or automatically enable access for all Azure
-services. The deployed firewall has 13 individual current web-app outbound IPv4
-rules. A single-IP rule for the migration machine was removed after verification.
+services. The deployed firewall has 31 individual Azure-advertised possible web-app
+outbound IPv4 rules. Using only the 13 current addresses was followed by SQL startup
+failures after the OAuth settings restart. Coverage of all 31 possible addresses
+was restored; startup recovered and a fresh restart passed. The original logs
+lacked driver codes, so the exact earlier network failure is not proven. A single-IP
+rule for the migration machine was removed after verification.
 Recheck outbound addresses if the plan or networking changes. Migration access
 must be permitted temporarily if another local schema migration is needed.
 Runtime application code creates neither firewall rules nor database users.
@@ -109,9 +115,11 @@ https://github.com/settings/applications/new using:
 - Callback: `https://app-ai-capsule-23025563.azurewebsites.net/api/auth/github/callback`
 
 These URLs are already configured as `PUBLIC_APP_URL` and `GITHUB_CALLBACK_URL`.
-In Azure Portal, open App Services > app-ai-capsule-23025563 > Settings > Environment
-variables > App settings. Add `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` directly,
-then Apply and confirm the restart. Do not share secrets in chat or change the
+The user registered this separate app and entered `GITHUB_CLIENT_ID` and
+`GITHUB_CLIENT_SECRET` directly in Azure App Settings. Both are now present and
+nonblank; no secret value was printed. Use App Services > app-ai-capsule-23025563 >
+Settings > Environment variables > App settings for future secure updates. Do not
+share secrets in chat or change the
 separate production `JWT_SECRET` already generated in Azure. Local OAuth secrets
 and ignored local configuration remain separate and unchanged.
 
@@ -127,7 +135,8 @@ HttpOnly, SameSite Lax, path `/`, with the existing expiry. No login bypass exis
 
 - Local build succeeded on Node 24.19.0. The unchanged implementation's baseline
   checks are 34 backend tests, 58 frontend tests, lint and build passing at 9bba166.
-  This deployment update changes documentation only; those tests were not rerun.
+  Those baseline checks remain applicable to unchanged frontend code. SQL diagnostics
+  were subsequently tested with the 35-test backend suite described below.
 - The allowlisted ZIP contained production dependencies, server runtime files and
   built frontend, without project environment files, certificates, SQLite data or
   application test files. Both initial deployment and redeployment reported status 4.
@@ -140,8 +149,25 @@ HttpOnly, SameSite Lax, path `/`, with the existing expiry. No login bypass exis
 - Actual cURL results: `GET /api/health` returned 200 and `{"status":"ok"}`;
   `GET /api/not-a-route` returned 404 JSON; `GET /api/capsules` without a cookie,
   and with `Cookie: token=fake-token-123`, each returned 401 JSON.
-- The OAuth callback route currently returns 503 naming the two missing client
-  configuration variables. This is expected until production credentials are set.
+- With credentials configured, `/api/auth/session` without a cookie or with a fake
+  token returns 401 JSON, which is the correct signed-out result. The previous
+  session-check-unavailable message corresponded to real Azure 503/startup failures,
+  not a normal unauthenticated session. Health/session recovered after the firewall
+  repair; another fresh app restart returned health 200 and session 401.
+- Live OAuth initiation returns 302 to GitHub's genuine authorization endpoint,
+  with the configured client ID/callback, random state and PKCE S256. The state
+  cookie has Secure, HttpOnly, SameSite=Lax, path `/api/auth/github`, Max-Age 600.
+  Callback without state redirects to invalid_state; a simulated denial with valid
+  state redirects to access_denied. Neither check performs a provider token exchange.
+- Live same-origin logout without an authenticated session returns 204 and a token
+  clearing cookie with Secure, HttpOnly, SameSite=Lax, path `/` and an expiry in the
+  past. Foreign-Origin logout returns 403. This checks the response, not real browser
+  cookie removal. Issued token cookie attributes and one-hour expiry are covered by
+  existing mocked-provider tests and still need real-login browser inspection.
+- Added redacted startup diagnostic codes for SQL connection/schema failures. Only
+  approved driver codes and numeric SQL errors are exposed, never raw error text.
+  All 35 backend tests passed under Node 24.19.0; frontend code/assets are unchanged.
+  The updated runtime artifact was deployed successfully and health rechecked.
 - Real Azure SQL adapter checks, using the Entra migration identity, verified all
   fields, defaults, Unicode/quotes, CRUD, owner isolation, managed metadata and a
   repeated schema migration without data loss. The runtime user has only CONNECT
@@ -153,9 +179,16 @@ HttpOnly, SameSite Lax, path `/`, with the existing expiry. No login bypass exis
   ID/timestamp and saved v2 version. No local records were uploaded. The separate
   temporary deletion-check record was removed.
 
-Pending after credentials are configured: real GitHub login, browser create/read/
-update/delete with refresh persistence, logout, and authenticated production API
-ownership checks. No real OAuth success is claimed. The existing fictional record
+Browser automation was attempted through a dedicated Chrome tab and the existing
+AI Capsule tab; both failed internally with a `timeoutMs` error before interaction.
+No real OAuth browser success or protected CRUD was observed in this verification.
+
+Pending manual checks: real GitHub login, browser create/read/update/delete with
+refresh persistence, category/rating/flags, real clipboard behavior, cancelled
+deletion, a newly created verification record surviving restart, logout and a second
+login. Authenticated operations use the managed-identity SQL adapter in code and
+production configuration; actual OAuth-backed operations remain to be observed.
+No real OAuth success is claimed. The existing fictional record
 is available for the verified owner to inspect after login.
 
 F1 has 60 CPU minutes/day, 3 CPU minutes per five-minute interval, 1 GB storage,

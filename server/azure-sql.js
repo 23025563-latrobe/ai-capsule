@@ -29,6 +29,16 @@ export function azureSqlConfig(env) {
   };
 }
 
+export function sqlFailureCode(error) {
+  const knownCodes = ['ELOGIN', 'ESOCKET', 'ETIMEOUT', 'ECONNCLOSED', 'ENOTOPEN', 'EREQUEST'];
+  const code = knownCodes.includes(error?.code) ? error.code : 'unknown';
+  const candidates = [error, error?.originalError, ...(error?.precedingErrors || [])];
+  const number = candidates.map((item) => item?.number ?? item?.info?.number)
+    .find((value) => Number.isSafeInteger(value) && value > 0);
+  // Keep useful driver codes without logging messages that may contain credentials.
+  return number ? `${code}; SQL ${number}` : code;
+}
+
 export async function connectAzureSql(env, driver = sql) {
   const pool = new driver.ConnectionPool(azureSqlConfig(env));
   // Pool errors may arrive outside a request. Log no driver details or tokens.
@@ -36,9 +46,9 @@ export async function connectAzureSql(env, driver = sql) {
   try {
     await pool.connect();
     return pool;
-  } catch {
+  } catch (error) {
     await pool.close();
-    throw new Error('Azure SQL connection failed. Check identity, firewall and database configuration.');
+    throw new Error(`Azure SQL connection failed (${sqlFailureCode(error)}). Check identity, firewall and database configuration.`);
   }
 }
 

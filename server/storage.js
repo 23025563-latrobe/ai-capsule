@@ -1,6 +1,6 @@
 import { openDatabase } from './database.js';
 import { createCapsuleStorage } from './capsule-storage.js';
-import { connectAzureSql, createAzureSqlStorage, verifyAzureSqlSchema } from './azure-sql.js';
+import { connectAzureSql, createAzureSqlStorage, verifyAzureSqlSchema, sqlFailureCode } from './azure-sql.js';
 
 export async function openStorage(env = process.env, connect = connectAzureSql) {
   const backend = env.DATABASE_BACKEND || 'sqlite';
@@ -16,8 +16,8 @@ export async function openStorage(env = process.env, connect = connectAzureSql) 
   try {
     await verifyAzureSqlSchema(pool);
     return { storage: createAzureSqlStorage(pool), close: () => pool.close() };
-  } catch {
+  } catch (error) {
     await pool.close();
-    throw new Error('Azure SQL schema is unavailable. Run the schema migration before starting the application.');
+    throw new Error(`Azure SQL schema is unavailable (${sqlFailureCode(error)}). Check connectivity, table permissions and migrations.`);
   }
 }
