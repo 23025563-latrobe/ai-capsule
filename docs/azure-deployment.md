@@ -16,8 +16,9 @@ The Azure for Students subscription is Enabled, quota identifier
 `AzureForStudents_2018-01-01`, with spending limit On. No paid tier, paid overage,
 monitoring resource, private endpoint or extra storage resource was enabled.
 Production OAuth client credentials are configured. Their presence and the exact
-production origin/callback were verified without displaying values. Real browser
-login remains pending.
+production origin/callback were verified without displaying values. The user now
+reports that deployed browser checks work well under RLirri; this is user-reported
+evidence, not direct browser observation by the agent.
 
 ## Build and start
 
@@ -183,13 +184,57 @@ Browser automation was attempted through a dedicated Chrome tab and the existing
 AI Capsule tab; both failed internally with a `timeoutMs` error before interaction.
 No real OAuth browser success or protected CRUD was observed in this verification.
 
-Pending manual checks: real GitHub login, browser create/read/update/delete with
-refresh persistence, category/rating/flags, real clipboard behavior, cancelled
-deletion, a newly created verification record surviving restart, logout and a second
-login. Authenticated operations use the managed-identity SQL adapter in code and
-production configuration; actual OAuth-backed operations remain to be observed.
-No real OAuth success is claimed. The existing fictional record
-is available for the verified owner to inspect after login.
+The user subsequently reported that the deployed application works well in manual
+browser checks using RLirri. Record this as user-reported verification; no individual
+browser interaction or cookie inspection was directly observed by the agent.
+
+## Fictional demonstration capsules
+
+Ten fictional capsules were inserted into the production database `ai-capsule` on
+`sql-ai-capsule-23025563.database.windows.net` for RLirri. GitHub's official public
+users API independently returned stable numeric ID `76832192`; the repository
+owner and display name were not used as the storage owner identity.
+
+The browser tool still failed internally, so insertion used a one-off app-container
+execution of the local seed script, through Azure CLI `webapp exec`, with the existing
+restricted managed identity and parameterized storage adapter. Normal capsule body
+validation ran before insertion. No application JWT was read or manufactured. This
+verifies SQL insertion/read-back, not an authenticated HTTP API create operation.
+No schema, authentication, permissions, firewall, pricing or startup behavior changed.
+
+- First actual run: **10 inserted, 0 skipped**.
+- Actual rerun: **0 inserted, 10 skipped**; all ten read-back owners matched.
+- Every newly inserted field was checked through owner-scoped storage, including
+  booleans, optional empty strings and the original multiline Unicode prompt.
+- Existing matches are identified by exact project name and prompt title for this
+  owner and skipped without overwriting. Run this manual tool one instance at a time.
+- Every project begins with Demo, every note identifies fictional demonstration data,
+  and all screenshot URLs are empty. No fabricated evidence or local records were used.
+- Health remained 200 after insertion. Authenticated API listing and rendered display
+  of these new records remain for the user's dashboard refresh.
+
+| Title | Category | Usefulness | Reviewed | Improved |
+| --- | --- | --- | --- | --- |
+| Explain an Express route | Coding | Good | Yes | Yes |
+| Fix a stale state update | Debugging | Needs improvement | Yes | No |
+| Plan capsule API tests | Testing | Good | No | No |
+| Revise a project introduction | Writing | Needs improvement | No | Yes |
+| Compare relational databases | Research | Not rated | No | No |
+| Prepare a deployment checklist | Planning | Good | Yes | No |
+| Explain OAuth and JWT sessions | Study | Not rated | Yes | Yes |
+| Review a data-cleaning approach | Data analysis | Good | Yes | Yes |
+| Review keyboard navigation | Accessibility | Needs improvement | No | No |
+| Preserve multiline prompt text | Coding | Good | Yes | No |
+
+Reusable files: `scripts/demo-capsules.js` and `scripts/seed-demo-capsules.js`.
+Manual invocation is `node scripts/seed-demo-capsules.js <GitHub-login>` with explicit
+production database configuration and an authorized database identity. Target guards
+reject SQLite or another database. It is not part of startup or deployment. The CLI
+looks up the stable GitHub ID from the provider before opening the database.
+All 38 backend tests passed on Node 24.19.0, including temporary-database checks for
+validation, all four review combinations, preserved existing/foreign records, exact
+multiline text round trips, duplicate skipping and target rejection. No frontend
+or API code changed; the established frontend checks remain applicable.
 
 F1 has 60 CPU minutes/day, 3 CPU minutes per five-minute interval, 1 GB storage,
 1,024 MB memory and 165 MB bandwidth under Microsoft's documented quotas. It has
