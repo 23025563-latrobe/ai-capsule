@@ -4,13 +4,13 @@ const writableFields = new Set([
   'screenshot_url', 'notes',
 ]);
 
-function requireOwner(ownerId) {
+export function requireOwner(ownerId) {
   if (typeof ownerId !== 'string' || !ownerId.trim()) {
     throw new TypeError('A trusted, non-empty owner ID is required.');
   }
 }
 
-function writableEntries(fields) {
+export function writableEntries(fields) {
   if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
     throw new TypeError('Capsule fields must be an object.');
   }

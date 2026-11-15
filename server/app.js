@@ -8,9 +8,11 @@ import { createCapsuleStorage } from './capsule-storage.js';
 
 const clientDirectory = fileURLToPath(new URL('../client/dist/', import.meta.url));
 
-export function createApp({ env = process.env, fetchProvider, states, database } = {}) {
+export function createApp({ env = process.env, fetchProvider, states, database, storage } = {}) {
   const app = express();
   app.disable('x-powered-by');
+  // Azure terminates TLS at its front proxy; use only the immediate proxy hop.
+  if (env.TRUST_PROXY === '1') app.set('trust proxy', 1);
   app.use(cookieParser());
   app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
@@ -28,7 +30,7 @@ export function createApp({ env = process.env, fetchProvider, states, database }
   }
   if (auth) app.use('/api/auth', auth.router);
   app.use('/api/capsules', createCapsuleApi({
-    storage: createCapsuleStorage(database),
+    storage: storage ?? createCapsuleStorage(database),
     requireUser: auth?.requireUser || ((req, res) => res.status(401).json({ error: 'Authentication required.' })),
     appOrigin: authConfig?.appOrigin,
   }));

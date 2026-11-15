@@ -7,12 +7,13 @@ import { randomBytes } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { createApp } from './app.js';
 import { openDatabase } from './database.js';
+import { createCapsuleStorage } from './capsule-storage.js';
 import { createSessions } from './session.js';
 import { readAuthConfig } from './auth-config.js';
 
 const required = { project_name: 'Assessment', prompt_title: 'SQL design', prompt_text: 'Explain relational data' };
 
-async function fixture(t) {
+async function fixture(t, overrides = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'ai-capsule-api-'));
   const database = openDatabase(join(directory, 'capsules.sqlite'));
   const env = {
@@ -25,7 +26,10 @@ async function fixture(t) {
   const sessions = createSessions(config);
   const alice = sessions.issue({ id: '101', login: 'alice' });
   const bob = sessions.issue({ id: '202', login: 'bob' });
-  const app = createApp({ env, database });
+  const sqlite = createCapsuleStorage(database);
+  const storage = Object.fromEntries(Object.entries(sqlite).map(([name, operation]) =>
+    [name, async (...args) => operation(...args)]));
+  const app = createApp({ env, storage: { ...storage, ...overrides } });
   const server = app.listen(0, '127.0.0.1');
   await new Promise((resolve, reject) => {
     server.once('listening', resolve);
@@ -258,4 +262,18 @@ test('DELETE rejects malformed JSON and unexpected bodies without removing the c
     assert.match(response.headers.get('content-type'), /application\/json/);
   }
   assert.deepEqual(await (await request()).json(), { capsules: [original] });
+});
+
+test('rejected asynchronous storage operations return generic 500 responses for every CRUD route', async (t) => {
+  const reject = async () => { throw new Error('private SQL details'); };
+  const { request } = await fixture(t, { list: reject, create: reject, update: reject, delete: reject });
+  for (const [method, path] of [
+    ['GET', '/api/capsules'], ['POST', '/api/capsules'],
+    ['PUT', '/api/capsules/1'], ['DELETE', '/api/capsules/1'],
+  ]) {
+    const response = await request(path, { method,
+      ...(['POST', 'PUT'].includes(method) ? { body: required } : {}) });
+    assert.equal(response.status, 500);
+    assert.deepEqual(await response.json(), { error: 'An unexpected server error occurred.' });
+  }
 });
